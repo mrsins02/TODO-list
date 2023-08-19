@@ -13,6 +13,7 @@ class TodoDetailSerializer(serializers.ModelSerializer):
 class TodoSerializer(serializers.ModelSerializer):
     user = serializers.StringRelatedField(read_only=True)
     details = TodoDetailSerializer(required=False)
+    is_done = serializers.BooleanField(default=False)
 
     class Meta:
         model = Todo
