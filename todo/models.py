@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 
 class TodoDetail(models.Model):
     description = models.TextField(blank=True, null=True)
-    reminder_time = models.DateTimeField(blank=True, null=True)
+    reminder_time = models.DateTimeField(blank=True, auto_now_add=True)
 
     class Meta:
         verbose_name = "TODO Detail"
@@ -18,7 +18,7 @@ class Todo(models.Model):
     details = models.OneToOneField(TodoDetail, on_delete=models.SET_NULL, blank=True, null=True)
 
     def __str__(self):
-        return f"{self.todo_message}({self.user})"
+        return f"{self.todo_message[:16]}({self.user})"
 
     class Meta:
         verbose_name = "TODO"

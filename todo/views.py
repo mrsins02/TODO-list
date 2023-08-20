@@ -1,37 +1,47 @@
-from django.shortcuts import render
+from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView, get_object_or_404
+
 from .models import Todo, TodoDetail
 from .serializers import TodoSerializer, TodoDetailSerializer
 
 
-class TodoListAPIView(APIView):
-    permission_classes = (IsAuthenticated,)
+class TodoListCreateAPIView(ListCreateAPIView):
+    serializer_class = TodoSerializer
+    permission_classes = [IsAuthenticated, ]
 
-    @staticmethod
-    def get_serializer_class():
-        return TodoSerializer
+    def get_queryset(self):
+        if self.request.query_params.get("is_done") == "true":
+            queryset = Todo.objects.filter(user=self.request.user, is_done=True)
+        elif self.request.query_params.get("is_done") == "false":
+            queryset = Todo.objects.filter(user=self.request.user, is_done=False)
+        else:
+            queryset = Todo.objects.filter(user=self.request.user).order_by("is_done")
+        return queryset
 
-    def get(self, request):
-        """
-            Returns the list of all TODO messages.
-        """
-        todo = Todo.objects.all()
-        todo_serializer = TodoSerializer(instance=todo, many=True)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            serializer.validated_data["user"] = request.user
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(data=todo_serializer.data, status=status.HTTP_200_OK)
 
-    def post(self, request):
-        """
-            Creates a new TODO messages.
-        """
-        todo_serializer = TodoSerializer(data=request.data)
-        if todo_serializer.is_valid():
-            todo_serializer.validated_data["user"] = request.user
-            result_data = todo_serializer.create(todo_serializer.validated_data)
-            result_serializer = TodoSerializer(instance=result_data)
-            return Response(data=result_serializer.data, status=status.HTTP_200_OK)
+class TodoDetailAPIView(RetrieveUpdateDestroyAPIView):
+    serializer_class = TodoSerializer
+    permission_classes = [IsAuthenticated, ]
 
-        return Response(data=todo_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def get_object(self):
+        todo = get_object_or_404(Todo, id=self.kwargs.get("pk"),
+                                 user=self.request.user)
+        return todo
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance).data
+        self.perform_destroy(instance)
+        return Response(data=serializer, status=status.HTTP_204_NO_CONTENT)
