@@ -1,4 +1,5 @@
 from rest_framework import serializers
+
 from .models import Todo, TodoDetail
 
 
@@ -34,3 +35,12 @@ class TodoSerializer(serializers.ModelSerializer):
                                    is_done=validated_data.get("is_done"), )
         todo.save()
         return todo
+
+    def update(self, instance: Todo, validated_data):
+        instance.todo_message = validated_data.get("todo_message", instance.todo_message)
+        instance.is_done = validated_data.get("is_done", instance.is_done)
+        if details_kwargs := validated_data.get("details"):
+            details, created = TodoDetail.objects.get_or_create(**details_kwargs)
+            instance.details_id = details.pk
+        instance.save()
+        return instance
